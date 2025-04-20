@@ -1,6 +1,6 @@
 //*****************************************************************************
 //
-// Application Name     - SPI Demo
+// Application Name     - SPI
 // Application Overview - The demo application focuses on showing the required 
 //                        initialization sequence to enable the CC3200 SPI 
 //                        module in full duplex 4-wire master and slave mode(s).
