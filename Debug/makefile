@@ -15,7 +15,6 @@ ORDERED_OBJS += \
 "./oled_test.obj" \
 "./pin_mux_config.obj" \
 "./startup_ccs.obj" \
-"./uart_if.obj" \
 "../cc3200v1p32.cmd" \
 $(GEN_CMDS__FLAG) \
 -l"/Applications/TI/lib/cc3200sdk_1.5.0/cc3200-sdk/driverlib/ccs/Release/driverlib.a" \
@@ -148,8 +147,8 @@ lab2.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 # Other Targets
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)
-	-$(RM) "Adafruit_GFX.obj" "Adafruit_OLED.obj" "i2c_if.obj" "main.obj" "oled_test.obj" "pin_mux_config.obj" "startup_ccs.obj" "uart_if.obj" 
-	-$(RM) "Adafruit_GFX.d" "Adafruit_OLED.d" "i2c_if.d" "main.d" "oled_test.d" "pin_mux_config.d" "startup_ccs.d" "uart_if.d" 
+	-$(RM) "Adafruit_GFX.obj" "Adafruit_OLED.obj" "i2c_if.obj" "main.obj" "oled_test.obj" "pin_mux_config.obj" "startup_ccs.obj" 
+	-$(RM) "Adafruit_GFX.d" "Adafruit_OLED.d" "i2c_if.d" "main.d" "oled_test.d" "pin_mux_config.d" "startup_ccs.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

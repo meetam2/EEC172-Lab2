@@ -42,7 +42,7 @@ void writeCommand(unsigned char c) {
         GPIOPinWrite(GPIOA0_BASE, 0x80, 0);
 
         // Set OC (CS) low to select OLED
-        GPIOPinWrite(GPIOA1_BASE, 0x20, 0);
+        GPIOPinWrite(GPIOA1_BASE, 0x1, 0);
 
         // Enable SPI CS (just in case)
         MAP_SPICSEnable(GSPI_BASE);
@@ -74,7 +74,7 @@ void writeData(unsigned char c) {
         GPIOPinWrite(GPIOA0_BASE, 0x80, 0x80);
 
         // Set OC (CS) low to select OLED
-        GPIOPinWrite(GPIOA1_BASE, 0x20, 0);
+        GPIOPinWrite(GPIOA1_BASE, 0x1, 0);
 
         // Enable SPI CS
         MAP_SPICSEnable(GSPI_BASE);

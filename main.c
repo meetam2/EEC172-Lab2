@@ -9,11 +9,11 @@
 
 //*****************************************************************************
 // Pin Connections
-//   MOSI (SI)  P7 on P1 header
+//   MOSI (SI)  P7 on P2 header
 //   SCK (CL)   P5 on P1 header
 //   DC         P62 on P1 header !!!!CHANGED FROM P2
 //   RESET (R)  P18 on P2 header
-//   OLEDCS (OC) P4 on P1 header
+//   OLEDCS (OC) P63 on  p3 header        !!!CHANGED FROM P4
 //   SDCS (SC)  n.c. (no connection)
 //   MISO (SO)  n.c. (no connection)
 //   CD         n.c. (no connection)
@@ -24,7 +24,7 @@
 
 
 // Standard includes
-#include <string.h>
+//#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -41,6 +41,7 @@
 #include "prcm.h"
 #include "uart.h"
 #include "interrupt.h"
+#include "gpio.h"
 
 // Common interface includes
 #include "uart_if.h"
@@ -73,8 +74,14 @@ extern void (* const g_pfnVectors[])(void);
 extern uVectorEntry __vector_table;
 #endif
 int DELAY = 8000000;
-float MAX_SPEED = 2;
+float MAX_SPEED = 0.2;
 int RADIUS = 4;
+int INVERTY = 1;
+int INVERTX = 0;
+int PROGBALL = 0;
+int PROGCHAR = 1;
+int PROGREADREG  = 2;
+int program = 0;
 //*****************************************************************************
 //                 GLOBAL VARIABLES -- End
 //*****************************************************************************
@@ -87,6 +94,9 @@ int RADIUS = 4;
 void testChar(){
     int i = 0;
     for(i = 0; i <= 255; i++){
+        if(program != PROGCHAR){
+            return;
+        }
         fillScreen(BLACK);
         drawChar(rand()%10, rand()%10, i, RED, BLACK, 3);
         MAP_UtilsDelay(DELAY);
@@ -94,6 +104,23 @@ void testChar(){
 
     return;
 }
+
+//void SW2(){
+//    if(program > 0){
+//        program--;
+//    }else{
+//        program = 2;
+//    }
+//    return;
+//}
+//
+//void SW3(){
+//    if(program < 2){
+//        program ++;
+//    } else{
+//        program = 0;
+//    }
+//}
 
 //****************************************************************************
 //
@@ -184,9 +211,9 @@ int getAcc(int iData[3]){
     unsigned char buffer[6];
     RET_IF_ERR(readReg(0x18, &buffer[0], 2, 6));
 
-    // Convert and assign to integer array
-    iData[0] = (int)buffer[1];
-    iData[1] = 255 - (int)buffer[3];
+    // Convert and assign to integer array. If INVERT is true, then the value will be 255 - value
+    iData[0] = (INVERTX)? 255 - (int)buffer[1] : (int)buffer[1];
+    iData[1] = (INVERTY)? 255 - (int)buffer[3] : (int)buffer[3];
     iData[2] = (int)buffer[5];
 
     //  Map the range from 0-255 to -64-64
@@ -204,28 +231,28 @@ int getAcc(int iData[3]){
 
 void slidingBall(){
     printf("begin sliding ball \n");
-    int pos[2] = {WIDTH/2, HEIGHT/2}; //position
+    float pos[2] = {WIDTH/2, HEIGHT/2}; //position
     int acc[3];   //acceleration
-    fillCircle(pos[0], pos[1], RADIUS, MAGENTA);
+    fillCircle((int)pos[0], (int)pos[1], RADIUS, MAGENTA);
 
     while(1){
-        unsigned char buffer[6];
-        fillCircle(pos[0], pos[1], RADIUS, MAGENTA);
+        fillCircle(pos[0], pos[1], RADIUS, GREEN);
 
         //  Update the x y position
         getAcc(acc);
         int i = 0;
         for(i = 0; i < 2; i++){
-            pos[i] = pos[i] + MAX_SPEED*acc[i]/64;
-            if(pos[i] >= WIDTH){
-                pos[i] = WIDTH;
-                fillScreen(BLUE);
-            }else if(pos[i] <= 0){
-                pos[i] = 0;
+            pos[i] = pos[i] + MAX_SPEED*(float)acc[i]/(float)64;
+
+            //  X Y Boundaries
+            if(pos[i] > WIDTH-RADIUS){
+                pos[i] = WIDTH-RADIUS;
+            }else if(pos[i] < 0+RADIUS){
+                pos[i] = RADIUS;
             }
         }
         //printf("%d, %d\n", acc[0], acc[1]);
-        fillCircle(pos[0], pos[1], RADIUS, MAGENTA);
+        fillCircle((int)pos[0], (int)pos[1], RADIUS, MAGENTA);
     }
 }
 
@@ -289,7 +316,6 @@ void main()
     // Enable the SPI module clock
     //
     MAP_SPIReset(GSPI_BASE);
-
     MAP_SPIConfigSetExpClk(GSPI_BASE, MAP_PRCMPeripheralClockGet(PRCM_GSPI),
                            8000000, SPI_MODE_MASTER, SPI_SUB_MODE_0,
                            (SPI_SW_CTRL_CS |
@@ -299,15 +325,7 @@ void main()
                             SPI_WL_8));
 
     MAP_SPIEnable(GSPI_BASE);
-    //
-    // Initialising the Terminal.
-    //
-    InitTerm();
 
-    //
-    // Clearing the Terminal.
-    //
-    ClearTerm();
 
     //
     // I2C Init
@@ -322,37 +340,52 @@ void main()
     // Initialize Adafruit OLED
     //
     Adafruit_Init();
-    fillScreen(GREEN);
+    fillScreen(BLACK);
 
-
-    printf("begin\n");
+    //
+    //  Enable Interrupts for Switches
+    //
+//    GPIOIntRegister(GPIOA1_BASE, &SW3);
+//    GPIOIntRegister(GPIOA2_BASE, &SW2);
+//    GPIOIntClear(GPIOA1_BASE, 0x20);
+//    GPIOIntClear(GPIOA2_BASE, 0x40);
+//    GPIOIntEnable(GPIOA1_BASE, 0x20);
+//    GPIOIntEnable(GPIOA2_BASE, 0x40);
 
     //Sliding Ball
-    //slidingBall();
+    slidingBall();
+
+//  TODO: For implementing switch interrupts
+//    while(1){
+//        switch(program){
+//        case PROGBALL:
+//            printf("PROGRAM: SLIDING BALL \n");
+//            slidingBall();
+//            break;
+//        case PROGCHAR:
+//            printf("PROGRAM: DRAW CHAR \n");
+//            testChar();
+//            break;
+//        case PROGREADREG:
+//            unsigned char buffer[1];
+//            RET_IF_ERR(readReg(0x18, &buffer[0], 3, 1));
+//            printf("x: %d, ", buffer[0]);
+//            RET_IF_ERR(readReg(0x18, &buffer[0], 5, 1));
+//            printf("y: %d\n ", buffer[0]);
+//            MAP_UtilsDelay(DELAY);
+//            break;
+//        }
+//    }
 
     //  READ X AND Y REGISTERS
-    unsigned char buffer[1];
-    while(1){
-        RET_IF_ERR(readReg(0x18, &buffer[0], 3, 1));
-        printf("x: %d, ", buffer[0]);
-        RET_IF_ERR(readReg(0x18, &buffer[0], 5, 1));
-        printf("y: %d\n ", buffer[0]);
-        MAP_UtilsDelay(DELAY);
-    }
+//    unsigned char buffer[1];
 //    while(1){
-//        //ProcessReadRegCommand(0x18, 0x2, 6);
-//        //readReg(0x18, &buffer[0], 2, 6);
-//        unsigned char acc[3];
-//        getAcc(&acc[0]);
-//        int i = 0;
-//        for(i = 0; i < 3; i++){
-//            printf("%d, ", acc[i]);
-//        }
-//        printf("\n");
-//
-//
-//        //MAP_UtilsDelay(DELAY);
+//        RET_IF_ERR(readReg(0x18, &buffer[0], 3, 1));
+//        printf("x: %d, ", buffer[0]);
+//        RET_IF_ERR(readReg(0x18, &buffer[0], 5, 1));
+//        printf("y: %d\n ", buffer[0]);
+//        MAP_UtilsDelay(DELAY);
 //    }
-    //*******************
+
     return;
 }
