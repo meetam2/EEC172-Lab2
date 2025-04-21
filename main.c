@@ -72,7 +72,9 @@ extern void (* const g_pfnVectors[])(void);
 #if defined(ewarm)
 extern uVectorEntry __vector_table;
 #endif
-int DELAY = 800000;
+int DELAY = 8000000;
+float MAX_SPEED = 2;
+int RADIUS = 4;
 //*****************************************************************************
 //                 GLOBAL VARIABLES -- End
 //*****************************************************************************
@@ -126,11 +128,10 @@ readReg(unsigned char ucDevAddr, unsigned char *pucData, unsigned char ucRegOffs
     RET_IF_ERR(I2C_IF_Read(ucDevAddr, &pucData[0], ucRdLen));
 
     //  Uncomment to print read contents
-//
 //    int bufferIndex = 0;
 //    printf("READ CONTENTS (0x): ");
 //    while(bufferIndex < ucRdLen){
-//        printf("%x, ", pucData[bufferIndex]);
+//        printf("%d, ", pucData[bufferIndex]);
 //        bufferIndex++;
 //    }
 //    printf("\n");
@@ -171,6 +172,7 @@ readReg(unsigned char ucDevAddr, unsigned char *pucData, unsigned char ucRegOffs
 //! Reads BMA222 accelerometer for the acceleration data for the x, y and z axes, respectively
 //!
 //! \param pucData is the pointer to array[3] where data will be placed
+//!         values range between -64, 64
 //!
 //! This function
 //!    1. Invokes the corresponding I2C APIs
@@ -178,15 +180,54 @@ readReg(unsigned char ucDevAddr, unsigned char *pucData, unsigned char ucRegOffs
 //! \return 0: Success, < 0: Failure.
 //
 //****************************************************************************
-int getAcc(unsigned char *pucData){
+int getAcc(int iData[3]){
     unsigned char buffer[6];
     RET_IF_ERR(readReg(0x18, &buffer[0], 2, 6));
-    pucData[0] = buffer[1];
-    pucData[1] = buffer[3];
-    pucData[2] = buffer[5];
+
+    // Convert and assign to integer array
+    iData[0] = (int)buffer[1];
+    iData[1] = 255 - (int)buffer[3];
+    iData[2] = (int)buffer[5];
+
+    //  Map the range from 0-255 to -64-64
+    int i = 0;
+    for(i=0; i<3; i++){
+        if(iData[i] > 128){
+            iData[i] = iData[i] - 255;
+        }
+        if(iData[i] < -64) {iData[i] = -64;}
+        else if(iData[i] > 64) {iData[i] = 64;}
+    }
+
+    return SUCCESS;
 }
 
+void slidingBall(){
+    printf("begin sliding ball \n");
+    int pos[2] = {WIDTH/2, HEIGHT/2}; //position
+    int acc[3];   //acceleration
+    fillCircle(pos[0], pos[1], RADIUS, MAGENTA);
 
+    while(1){
+        unsigned char buffer[6];
+        fillCircle(pos[0], pos[1], RADIUS, MAGENTA);
+
+        //  Update the x y position
+        getAcc(acc);
+        int i = 0;
+        for(i = 0; i < 2; i++){
+            pos[i] = pos[i] + MAX_SPEED*acc[i]/64;
+            if(pos[i] >= WIDTH){
+                pos[i] = WIDTH;
+                fillScreen(BLUE);
+            }else if(pos[i] <= 0){
+                pos[i] = 0;
+            }
+        }
+        //printf("%d, %d\n", acc[0], acc[1]);
+        fillCircle(pos[0], pos[1], RADIUS, MAGENTA);
+    }
+}
 
 //*****************************************************************************
 //
@@ -272,34 +313,46 @@ void main()
     // I2C Init
     //
     I2C_IF_Open(I2C_MASTER_MODE_FST);
+    unsigned char buf[1];
+    while(I2C_IF_Read(0x18, &buf[0], 1) != SUCCESS){
+        printf("Waiting for I2C...\n");
+    }
 
     //
     // Initialize Adafruit OLED
     //
     Adafruit_Init();
+    fillScreen(GREEN);
 
 
-    //*******************temporary delete later
-    fillScreen(RED);  // Red screen
     printf("begin\n");
 
+    //Sliding Ball
+    //slidingBall();
 
-    MAP_UtilsDelay(DELAY);
-    printf("AAHHHH\n");
-    //ProcessReadRegCommand(24, &buffer[0], 2, 6);
+    //  READ X AND Y REGISTERS
+    unsigned char buffer[1];
     while(1){
-        //ProcessReadRegCommand(0x18, 0x2, 6);
-        //readReg(0x18, &buffer[0], 2, 6);
-        unsigned char acc[3];
-        getAcc(&acc[0]);
-        int i = 0;
-        for(i = 0; i < 3; i++){
-            printf("%d, ", acc[i]);
-        }
-        printf("\n");
-
-
-        //MAP_UtilsDelay(DELAY);
+        RET_IF_ERR(readReg(0x18, &buffer[0], 3, 1));
+        printf("x: %d, ", buffer[0]);
+        RET_IF_ERR(readReg(0x18, &buffer[0], 5, 1));
+        printf("y: %d\n ", buffer[0]);
+        MAP_UtilsDelay(DELAY);
     }
+//    while(1){
+//        //ProcessReadRegCommand(0x18, 0x2, 6);
+//        //readReg(0x18, &buffer[0], 2, 6);
+//        unsigned char acc[3];
+//        getAcc(&acc[0]);
+//        int i = 0;
+//        for(i = 0; i < 3; i++){
+//            printf("%d, ", acc[i]);
+//        }
+//        printf("\n");
+//
+//
+//        //MAP_UtilsDelay(DELAY);
+//    }
     //*******************
+    return;
 }
