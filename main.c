@@ -72,7 +72,7 @@ extern void (* const g_pfnVectors[])(void);
 #if defined(ewarm)
 extern uVectorEntry __vector_table;
 #endif
-int DELAY = 8000000;
+int DELAY = 800000;
 //*****************************************************************************
 //                 GLOBAL VARIABLES -- End
 //*****************************************************************************
@@ -118,22 +118,24 @@ readReg(unsigned char ucDevAddr, unsigned char *pucData, unsigned char ucRegOffs
     // Write the register address to be read from.
     // Stop bit implicitly assumed to be 0.
     //
-    //RET_IF_ERR(I2C_IF_Write(ucDevAddr,&ucRegOffset,1,0));
-    I2C_IF_Write(ucDevAddr, &ucRegOffset,1,0);
+    RET_IF_ERR(I2C_IF_Write(ucDevAddr, &ucRegOffset,1,0));
 
     //
     // Read the specified length of data
     //
-    //RET_IF_ERR(I2C_IF_Read(ucDevAddr, &aucRdDataBuf[0], ucRdLen));
-    I2C_IF_Read(ucDevAddr, &pucData[0], ucRdLen);
+    RET_IF_ERR(I2C_IF_Read(ucDevAddr, &pucData[0], ucRdLen));
 
-    int bufferIndex = 0;
-    printf("READ CONTENTS (0x): ");
-    while(bufferIndex < ucRdLen){
-        printf("%x, ", pucData[bufferIndex]);
-        bufferIndex++;
-    }
-    printf("\n");
+    //  Uncomment to print read contents
+//
+//    int bufferIndex = 0;
+//    printf("READ CONTENTS (0x): ");
+//    while(bufferIndex < ucRdLen){
+//        printf("%x, ", pucData[bufferIndex]);
+//        bufferIndex++;
+//    }
+//    printf("\n");
+
+
     return SUCCESS;
 }
 //int
@@ -163,6 +165,27 @@ readReg(unsigned char ucDevAddr, unsigned char *pucData, unsigned char ucRegOffs
 //    printf("\n");
 //    return SUCCESS;
 //}
+
+//****************************************************************************
+//
+//! Reads BMA222 accelerometer for the acceleration data for the x, y and z axes, respectively
+//!
+//! \param pucData is the pointer to array[3] where data will be placed
+//!
+//! This function
+//!    1. Invokes the corresponding I2C APIs
+//!
+//! \return 0: Success, < 0: Failure.
+//
+//****************************************************************************
+int getAcc(unsigned char *pucData){
+    unsigned char buffer[6];
+    RET_IF_ERR(readReg(0x18, &buffer[0], 2, 6));
+    pucData[0] = buffer[1];
+    pucData[1] = buffer[3];
+    pucData[2] = buffer[5];
+}
+
 
 
 //*****************************************************************************
@@ -263,14 +286,20 @@ void main()
 
     MAP_UtilsDelay(DELAY);
     printf("AAHHHH\n");
-    unsigned char buffer[6];
     //ProcessReadRegCommand(24, &buffer[0], 2, 6);
     while(1){
         //ProcessReadRegCommand(0x18, 0x2, 6);
-        readReg(0x18, &buffer[0], 2, 6);
+        //readReg(0x18, &buffer[0], 2, 6);
+        unsigned char acc[3];
+        getAcc(&acc[0]);
+        int i = 0;
+        for(i = 0; i < 3; i++){
+            printf("%d, ", acc[i]);
+        }
+        printf("\n");
 
 
-        MAP_UtilsDelay(DELAY);
+        //MAP_UtilsDelay(DELAY);
     }
     //*******************
 }
