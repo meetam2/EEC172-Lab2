@@ -9,15 +9,17 @@
 
 //*****************************************************************************
 // Pin Connections
-//   MOSI (SI)  P7 on P2 header
+//   MOSI (SI)  P7 on P1 header
 //   SCK (CL)   P5 on P1 header
-//   DC         P2 on P1 header
+//   DC         P62 on P1 header !!!!CHANGED FROM P2
 //   RESET (R)  P18 on P2 header
 //   OLEDCS (OC) P4 on P1 header
 //   SDCS (SC)  n.c. (no connection)
 //   MISO (SO)  n.c. (no connection)
 //   CD         n.c. (no connection)
 //   3V         n.c. (no connection)
+//   Vin (+)    3.3V
+//   GND (G)    GND
 //*****************************************************************************
 
 
@@ -80,45 +82,87 @@ int DELAY = 8000000;
 //                      LOCAL FUNCTION DEFINITIONS
 //****************************************************************************
 
+void testChar(){
+    int i = 0;
+    for(i = 0; i <= 255; i++){
+        fillScreen(BLACK);
+        drawChar(rand()%10, rand()%10, i, RED, BLACK, 3);
+        MAP_UtilsDelay(DELAY);
+    }
+
+    return;
+}
 
 //****************************************************************************
 //
 //! Parses the readreg command parameters and invokes the I2C APIs
-//! i2c readreg 0x<dev_addr> 0x<reg_offset> <rdlen>
 //!
-//! \param pcInpString pointer to the readreg command parameters
-//!         dev_addr - slave address of the i2c device
-//!         reg_offset - register address in the i2c device
+//! \param ucDevAddr is the 7-bit I2C slave address
+//! \param pucData is the pointer to the read data to be placed
+//! \param ucRegOffset is the register address in the i2c device
+//! \param ucLen is the length of data to be read
+//!     To read the new data flag and the acceleration data for the x, y and z axes, use parameters (0x18, buffer, 0x2, 6)
+//!     To read the acceleration data for the x, y and z axes, respectively, use parameters (0x18, buffer, 3, 1) (0x18, buffer, 5, 1) (0x18, buffer, 7, 1)
 //!
 //! This function
-//!    1. Parses the readreg command parameters.
-//!    2. Invokes the corresponding I2C APIs
+//!    1. Invokes the corresponding I2C APIs
 //!
 //! \return 0: Success, < 0: Failure.
 //
 //****************************************************************************
 int
-ProcessReadRegCommand(unsigned char ucDevAddr, unsigned char ucRegOffset, unsigned char ucRdLen)
+readReg(unsigned char ucDevAddr, unsigned char *pucData, unsigned char ucRegOffset, unsigned char ucRdLen)
 {
-    printf("BEGIN READREG COMMAND");
-    unsigned char aucRdDataBuf[256];
-
-    //RETERR_IF_TRUE(ucLen > sizeof(aucDataBuf));
-
+    //unsigned char aucRdDataBuf[256];
     //
     // Write the register address to be read from.
     // Stop bit implicitly assumed to be 0.
     //
-    RET_IF_ERR(I2C_IF_Write(ucDevAddr,&ucRegOffset,1,0));
+    //RET_IF_ERR(I2C_IF_Write(ucDevAddr,&ucRegOffset,1,0));
+    I2C_IF_Write(ucDevAddr, &ucRegOffset,1,0);
 
     //
     // Read the specified length of data
     //
-    RET_IF_ERR(I2C_IF_Read(ucDevAddr, &aucRdDataBuf[0], ucRdLen));
+    //RET_IF_ERR(I2C_IF_Read(ucDevAddr, &aucRdDataBuf[0], ucRdLen));
+    I2C_IF_Read(ucDevAddr, &pucData[0], ucRdLen);
 
-    printf("Read contents %x",aucRdDataBuf[0]);
+    int bufferIndex = 0;
+    printf("READ CONTENTS (0x): ");
+    while(bufferIndex < ucRdLen){
+        printf("%x, ", pucData[bufferIndex]);
+        bufferIndex++;
+    }
+    printf("\n");
     return SUCCESS;
 }
+//int
+//ProcessReadRegCommand(unsigned char ucDevAddr, unsigned char ucRegOffset1, unsigned char ucRdLen)
+//{
+//    unsigned char aucRdDataBuf[256];
+//    unsigned char ucRegOffset = ucRegOffset1;
+//    //
+//    // Write the register address to be read from.
+//    // Stop bit implicitly assumed to be 0.
+//    //
+//    RET_IF_ERR(I2C_IF_Write(ucDevAddr,&ucRegOffset,1,0));
+//    //I2C_IF_Write(ucDevAddr, &ucRegOffset,1,0);
+//
+//    //
+//    // Read the specified length of data
+//    //
+//    RET_IF_ERR(I2C_IF_Read(ucDevAddr, &aucRdDataBuf[0], ucRdLen));
+//    //I2C_IF_Read(ucDevAddr, &aucRdDataBuf[0], ucRdLen);
+//
+//    int bufferIndex = 0;
+//    printf("READ CONTENTS (0x): ");
+//    while(bufferIndex < ucRdLen){
+//        printf("%x, ", aucRdDataBuf[bufferIndex]);
+//        bufferIndex++;
+//    }
+//    printf("\n");
+//    return SUCCESS;
+//}
 
 
 //*****************************************************************************
@@ -202,28 +246,31 @@ void main()
     ClearTerm();
 
     //
+    // I2C Init
+    //
+    I2C_IF_Open(I2C_MASTER_MODE_FST);
+
+    //
     // Initialize Adafruit OLED
     //
     Adafruit_Init();
 
-    //temporary drawChar
+
+    //*******************temporary delete later
     fillScreen(RED);  // Red screen
     printf("begin\n");
-    ProcessReadRegCommand(0x18, 0x03, 0x01);
-    MAP_UtilsDelay(DELAY);
-    drawChar(SSD1351WIDTH/2, SSD1351HEIGHT/2, 0x6A, BLACK, RED, SSD1351WIDTH/2);
 
-    int i = 0;
+
+    MAP_UtilsDelay(DELAY);
+    printf("AAHHHH\n");
+    unsigned char buffer[6];
+    //ProcessReadRegCommand(24, &buffer[0], 2, 6);
     while(1){
-        fillScreen(RED);
-        drawChar(rand()%10, rand()%10, i, BLACK, RED, 3);
+        //ProcessReadRegCommand(0x18, 0x2, 6);
+        readReg(0x18, &buffer[0], 2, 6);
+
+
         MAP_UtilsDelay(DELAY);
-        if(i >= 255){
-            i = 0;
-        } else{
-            i++;
-        }
-        //ProcessReadRegCommand(0x18, 0x3, 1);
     }
-    //
+    //*******************
 }

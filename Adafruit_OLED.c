@@ -39,7 +39,7 @@ void writeCommand(unsigned char c) {
     unsigned long dummy;
 
         // Set DC low for command
-        GPIOPinWrite(GPIOA1_BASE, 0x8, 0);
+        GPIOPinWrite(GPIOA0_BASE, 0x80, 0);
 
         // Set OC (CS) low to select OLED
         GPIOPinWrite(GPIOA1_BASE, 0x20, 0);
@@ -71,7 +71,7 @@ void writeData(unsigned char c) {
     unsigned long dummy;
 
         // Set DC high for data
-        GPIOPinWrite(GPIOA1_BASE, 0x8, 0x8);
+        GPIOPinWrite(GPIOA0_BASE, 0x80, 0x80);
 
         // Set OC (CS) low to select OLED
         GPIOPinWrite(GPIOA1_BASE, 0x20, 0);
